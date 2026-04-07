@@ -1,4 +1,6 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import bcrypt from "bcryptjs";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -27,9 +29,19 @@ declare module "express-serve-static-core" {
   }
 }
 
-const JWT_SECRET = process.env.JWT_SECRET ?? "";
+/** cwd와 무관하게 저장소 루트의 .env 로드 (로컬). 배포 환경은 플랫폼 Environment만 사용. */
+const serverDir = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(serverDir, "..");
+dotenv.config({ path: path.join(repoRoot, ".env") });
+dotenv.config({ path: path.join(repoRoot, ".env.local") });
+
+const JWT_SECRET = (process.env.JWT_SECRET ?? "").trim();
 if (JWT_SECRET.length < 16) {
-  console.error("FATAL: .env에 JWT_SECRET(16자 이상)을 설정하세요.");
+  console.error("FATAL: JWT_SECRET이 없거나 16자 미만입니다.");
+  console.error(`  .env 로드 시도: ${path.join(repoRoot, ".env")}`);
+  console.error("  로컬: 위 경로에 JWT_SECRET=최소16자이상 (등호 앞뒤 공백 없이)");
+  console.error("  Railway/Render/Vercel(API) 등: 대시보드 Environment Variables에 JWT_SECRET 추가");
+  console.error("  (.env 파일은 gitignore라 서버에는 올라가지 않습니다.)");
   process.exit(1);
 }
 
