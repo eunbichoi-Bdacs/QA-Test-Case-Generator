@@ -21,6 +21,7 @@ import {
   updateProjectWorkspaceRow,
   type ProjectRow,
 } from "./db.js";
+import { generateTcWithGemini } from "./geminiTc.js";
 import { emptyWorkspaceJson } from "./workspaceDefaults.js";
 
 declare module "express-serve-static-core" {
@@ -316,13 +317,31 @@ app.delete("/api/projects/:id", requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-/** TC 생성: 별도 마이크로서비스로 프록시하거나, 추후 이 서버에서 직접 호출 */
+/** TC 생성: GEMINI_API_KEY 있으면 Gemini, 아니면 TC_GENERATE_UPSTREAM_URL 프록시 */
 app.post("/api/generate-tc", requireAuth, async (req, res) => {
+  const geminiKey = process.env.GEMINI_API_KEY?.trim();
+  if (geminiKey) {
+    try {
+      const out = await generateTcWithGemini({
+        systemPrompt: String(req.body?.systemPrompt ?? ""),
+        prd: String(req.body?.prd ?? ""),
+        tabGroups: Array.isArray(req.body?.tabGroups) ? req.body.tabGroups : [],
+      });
+      res.json(out);
+    } catch (e) {
+      console.error("generate-tc gemini:", e);
+      res.status(502).json({
+        error: e instanceof Error ? e.message : "Gemini TC 생성 실패",
+      });
+    }
+    return;
+  }
+
   const upstream = process.env.TC_GENERATE_UPSTREAM_URL?.replace(/\/$/, "");
   if (!upstream) {
     res.status(503).json({
       error:
-        "TC 생성 업스트림 미설정입니다. TC_GENERATE_UPSTREAM_URL을 설정하거나 클라이언트에서 VITE_USE_MOCK=true 를 사용하세요.",
+        "TC 생성 미설정입니다. .env에 GEMINI_API_KEY를 넣거나 TC_GENERATE_UPSTREAM_URL을 설정하세요. 목업만 쓰려면 클라이언트 VITE_USE_MOCK=true",
     });
     return;
   }
@@ -341,5 +360,6 @@ app.post("/api/generate-tc", requireAuth, async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`API + DB 서버 http://127.0.0.1:${PORT}  (DB: SQLite)`);
+  const gemini = process.env.GEMINI_API_KEY?.trim() ? `Gemini(${process.env.GEMINI_MODEL ?? "gemini-2.0-flash"})` : "Gemini(off)";
+  console.log(`API + DB 서버 http://127.0.0.1:${PORT}  (DB: SQLite, TC: ${gemini})`);
 });
