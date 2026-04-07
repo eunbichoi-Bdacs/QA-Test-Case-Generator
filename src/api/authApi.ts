@@ -1,15 +1,17 @@
 import type { AuthUser } from "../types";
-import { apiFetch, readApiError } from "./http";
+import { apiFetch, handleJsonResponse, handleVoidResponse, parseApiErrorText, parseApiJson } from "./http";
 
 export async function fetchAuthMe(): Promise<AuthUser | null> {
   const res = await apiFetch("/api/auth/me", { method: "GET" });
+  const text = await res.text();
   if (res.status === 401) return null;
-  if (!res.ok) throw new Error(await readApiError(res));
-  return (await res.json()) as AuthUser;
+  if (!res.ok) throw new Error(parseApiErrorText(text, res.status));
+  return parseApiJson<AuthUser>(text);
 }
 
 export async function apiLogout(): Promise<void> {
-  await apiFetch("/api/auth/logout", { method: "POST", body: "{}" });
+  const res = await apiFetch("/api/auth/logout", { method: "POST", body: "{}" });
+  await handleVoidResponse(res);
 }
 
 export async function apiRegister(username: string, password: string): Promise<AuthUser> {
@@ -17,8 +19,7 @@ export async function apiRegister(username: string, password: string): Promise<A
     method: "POST",
     body: JSON.stringify({ username: username.trim().toLowerCase(), password }),
   });
-  if (!res.ok) throw new Error(await readApiError(res));
-  return (await res.json()) as AuthUser;
+  return handleJsonResponse<AuthUser>(res);
 }
 
 export async function apiLogin(username: string, password: string): Promise<AuthUser> {
@@ -26,8 +27,7 @@ export async function apiLogin(username: string, password: string): Promise<Auth
     method: "POST",
     body: JSON.stringify({ username: username.trim().toLowerCase(), password }),
   });
-  if (!res.ok) throw new Error(await readApiError(res));
-  return (await res.json()) as AuthUser;
+  return handleJsonResponse<AuthUser>(res);
 }
 
 export async function apiGoogleAuth(credential: string): Promise<AuthUser> {
@@ -35,6 +35,5 @@ export async function apiGoogleAuth(credential: string): Promise<AuthUser> {
     method: "POST",
     body: JSON.stringify({ credential }),
   });
-  if (!res.ok) throw new Error(await readApiError(res));
-  return (await res.json()) as AuthUser;
+  return handleJsonResponse<AuthUser>(res);
 }

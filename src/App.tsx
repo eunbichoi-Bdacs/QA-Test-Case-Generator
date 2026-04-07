@@ -58,8 +58,12 @@ const App: React.FC = () => {
         <main className="app-main">
           <p className="input-actions__error">{bootError}</p>
           <p className="section-hint muted">
-            API 서버가 켜져 있는지 확인하세요. <code>npm run dev</code>는 API(8787)와 Vite(5173)를 함께
-            띄웁니다.
+            <strong>로컬:</strong> <code>npm run dev</code>로 API(8787)와 Vite(5173)를 같이 띄웁니다.
+            <br />
+            <strong>배포(Vercel 등):</strong> 프론트만 있으면 <code>/api</code>가 없습니다. Node API를
+            Railway·Render 등에 올린 뒤, Vercel 환경 변수에{" "}
+            <code>VITE_API_BASE_URL=https://백엔드주소</code> 를 넣고 다시 배포하세요. (쿠키 로그인은
+            백엔드에서 <code>SameSite=None; Secure</code> CORS 설정이 필요할 수 있습니다.)
           </p>
         </main>
       </div>
